@@ -86,7 +86,7 @@ flowchart TD
 
 Fluxbrain importiert **Errorbrain als Go-Modul**:
 
-\`\`\`go
+```go
 // go.mod
 module github.com/afeldman/fluxbrain
 
@@ -96,17 +96,17 @@ require (
 
 // Lokale Entwicklung
 replace github.com/afeldman/errorbrain => ../errorbrain
-\`\`\`
+```
 
 ### Errorbrain Repository
 - **Location**: https://github.com/afeldman/errorbrain
 - **Responsibility**: LLM-Auswahl, Prompt-Engineering, Analyse-Logik
 - **Interface** (erwartet):
-  \`\`\`go
+  ```go
   type Analyzer interface {
       Analyze(input Input) (Result, error)
   }
-  \`\`\`
+  ```
 
 ---
 
@@ -114,7 +114,7 @@ replace github.com/afeldman/errorbrain => ../errorbrain
 
 ### CronJob (Empfohlen für Start)
 
-\`\`\`yaml
+```yaml
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -140,11 +140,11 @@ spec:
                   name: fluxbrain-secrets
                   key: slack-webhook
           restartPolicy: OnFailure
-\`\`\`
+```
 
 ### Deployment (Continuous Mode)
 
-\`\`\`yaml
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -173,7 +173,7 @@ spec:
             secretKeyRef:
               name: fluxbrain-secrets
               key: slack-webhook
-\`\`\`
+```
 
 ---
 
@@ -229,9 +229,9 @@ spec:
 
 ### Integration Test (Mock Errorbrain)
 
-\`\`\`bash
+```bash
 go test ./internal/analysis -v
-\`\`\`
+```
 
 Der Test verifiziert:
 - \`ErrorContext\` → \`errorbrain.Input\` Serialisierung
@@ -242,7 +242,7 @@ Der Test verifiziert:
 
 ## 🔁 Reconciliation Flow
 
-\`\`\`
+```
 1. Timer/Cron Trigger
 2. Collector.CollectErrors()
    └─ []ErrorContext
@@ -255,7 +255,7 @@ Der Test verifiziert:
 4. On error:
    └─ State.RegisterFailure(fingerprint)
       └─ Backoff = Failures * 30s (max 1h)
-\`\`\`
+```
 
 ### Backoff-Strategie
 
@@ -270,13 +270,13 @@ Der Test verifiziert:
 
 ## 📦 Build
 
-\`\`\`bash
+```bash
 # Lokal
 go build -o fluxbrain ./cmd/fluxbrain
 
 # Docker
 docker build -t fluxbrain:latest .
-\`\`\`
+```
 
 ---
 
@@ -284,7 +284,7 @@ docker build -t fluxbrain:latest .
 
 ### Projektstruktur
 
-\`\`\`
+```
 fluxbrain/
 ├── cmd/fluxbrain/          # Entrypoint
 ├── internal/
@@ -297,11 +297,11 @@ fluxbrain/
 │   └── config/             # Config Loader
 ├── pkg/types/              # Domain Types
 └── README.md
-\`\`\`
+```
 
 ### Lokale Entwicklung mit Errorbrain
 
-\`\`\`bash
+```bash
 # 1. Clone Errorbrain im Schwester-Verzeichnis
 cd /Users/anton.feldmann/Projects/lynqtech
 git clone https://github.com/afeldman/errorbrain.git
@@ -314,7 +314,7 @@ cat go.mod
 # 3. Build & Test
 go build ./cmd/fluxbrain
 go test ./...
-\`\`\`
+```
 
 ### Nächste Schritte
 

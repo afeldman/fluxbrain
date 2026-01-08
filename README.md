@@ -29,7 +29,7 @@
 
 ## 🏗 Architektur
 
-\`\`\`mermaid
+```mermaid
 flowchart TD
     FLUX[FluxCD Controllers]
     FLUX --> K8S[Kubernetes API]
@@ -49,7 +49,7 @@ flowchart TD
     NT --> GH[GitHub Issues]
     
     ENG --> STATE[Backoff State Store]
-\`\`\`
+```
 
 ### Komponenten
 
@@ -128,26 +128,12 @@ spec:
         spec:
           containers:
           - name: fluxbrain
-            image: ghcr.io/enercity/fluxbrain:latest
+            image: ghcr.io/afeldman/fluxbrain:latest
             env:
             - name: FLUXBRAIN_RUN_MODE
               value: "once"
             - name: FLUXBRAIN_CLUSTER
               value: "prod-eu-west-1"
-            - name: FLUXBRAIN_ERRORBRAIN_ENDPOINT
-              value: "https://errorbrain.example.com/analyze"
-            - name: FLUXBRAIN_ERRORBRAIN_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: fluxbrain-secrets
-                  key: errorbrain-api-key
-            - name: FLUXBRAIN_LLM_PROVIDER
-              value: "openai"
-            - name: FLUXBRAIN_OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: fluxbrain-secrets
-                  key: openai-api-key
             - name: FLUXBRAIN_SLACK_WEBHOOK
               valueFrom:
                 secretKeyRef:
@@ -176,11 +162,17 @@ spec:
     spec:
       containers:
       - name: fluxbrain
-        image: ghcr.io/enercity/fluxbrain:latest
+        image: ghcr.io/afeldman/fluxbrain:latest
         env:
         - name: FLUXBRAIN_REQUEUE_INTERVAL
           value: "5m"
-        # ... (gleiche Env-Variablen wie CronJob)
+        - name: FLUXBRAIN_CLUSTER
+          value: "prod-eu-west-1"
+        - name: FLUXBRAIN_SLACK_WEBHOOK
+          valueFrom:
+            secretKeyRef:
+              name: fluxbrain-secrets
+              key: slack-webhook
 \`\`\`
 
 ---
@@ -192,9 +184,8 @@ spec:
 | Variable | Beschreibung |
 |----------|--------------|
 | \`FLUXBRAIN_CLUSTER\` | Cluster-Name für Kontext |
-| \`FLUXBRAIN_ERRORBRAIN_ENDPOINT\` | Errorbrain-API-URL |
-| \`FLUXBRAIN_ERRORBRAIN_API_KEY\` | Errorbrain-API-Key |
-| \`FLUXBRAIN_OPENAI_API_KEY\` | OpenAI-Key (wenn \`LLM_PROVIDER=openai\`) |
+
+**Hinweis**: Errorbrain-Integration erfolgt über Go-Modul, keine Runtime-Config erforderlich.
 
 ### Optional
 
@@ -215,23 +206,12 @@ spec:
 
 **Fluxbrain ruft KEINE LLMs direkt auf.** Alle Analyse-Logik liegt in Errorbrain.
 
-### Adapter-Flow
+### Aktueller Status
 
-\`\`\`go
-// internal/analysis/errorbrain.go
-func (a *ErrorbrainAdapter) Analyze(ctx context.Context, ec types.ErrorContext) (types.AnalysisResult, error) {
-    payload, _ := json.Marshal(ec)
-    
-    // Errorbrain entscheidet: LLM, Prompt, Provider
-    result, err := a.Analyzer.Analyze(errorbrain.Input{
-        Source:  "fluxbrain",
-        Payload: payload,
-    })
-    
-    // Konvertiere Errorbrain-Result zurück zu Fluxbrain-Typen
-    return convertResult(result), err
-}
-\`\`\`
+**MockAnalyzer** ist aktuell implementiert als Platzhalter:
+- Gibt statische Analyse-Ergebnisse zurück
+- Wird ersetzt sobald Errorbrain-Library verfügbar ist
+- Siehe `cmd/fluxbrain/main.go` für Implementation
 
 ### Verantwortlichkeiten
 
@@ -279,28 +259,12 @@ Der Test verifiziert:
 
 ### Backoff-Strategie
 
-- **Fingerprint**: \`sha256(cluster + resource + reason + gitRevision)\`
+- **Fingerprint**: `sha256(cluster + resource + reason + gitRevision)`
 - **1. Fehler**: Backoff = 30s
 - **2. Fehler**: Backoff = 60s
 - **3. Fehler**: Backoff = 90s
 - **Max**: 1h (konfigurierbar)
-- **Reset**: Bei \`RegisterSuccess()\`
-
----
-
-## 🧪 Testing
-
-\`\`\`bash
-# Unit-Tests
-go test ./...
-
-# Spezifische Tests
-go test ./internal/state/...
-go test ./internal/context/...
-
-# Mit Coverage
-go test -cover ./...
-\`\`\`
+- **Reset**: Bei `RegisterSuccess()`
 
 ---
 
@@ -375,14 +339,24 @@ go test ./...
 
 - **Separation of Concerns**: Fluxbrain = Orchestrierung, Errorbrain = Denken
 - **Black Box Analyzer**: Errorbrain-Interface nicht implementieren, sondern aufrufen
-- **Adapter Pattern**: \`ErrorbrainAdapter\` konvertiert nur Datentypen
+- **Adapter Pattern**: `ErrorbrainAdapter` konvertiert nur Datentypen
 - **Clean Boundaries**: Keine Errorbrain-Internals in Fluxbrain importieren
 
 ---
 
-## 📄 Lizenz
+## 🧪 Testing
 
-Enercity Internal – Nicht für öffentliche Distribution.
+```bash
+# Unit-Tests
+go test ./...
+
+# Spezifische Tests  
+go test ./internal/state/...
+go test ./internal/context/...
+
+# Mit Coverage
+go test -cover ./...
+```
 
 ---
 
@@ -390,5 +364,3 @@ Enercity Internal – Nicht für öffentliche Distribution.
 
 - **Errorbrain**: https://github.com/afeldman/errorbrain – Structured analysis core
 - **FluxCD**: GitOps Toolkit für Kubernetes
-- **FluxCD**: GitOps toolkit
-- **OpenAI**: LLM provider

@@ -1,0 +1,23 @@
+.git/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Binaries
+fluxbrain
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test outputs
+*.test
+*.out
+coverage.txt
+
+# Go workspace
+go.work
+go.work.sum

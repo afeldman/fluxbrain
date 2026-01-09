@@ -123,9 +123,20 @@ func formatEvent(ev K8sEvent) string {
 }
 
 // KubernetesEventLister is a placeholder for a real implementation using client-go.
-type KubernetesEventLister struct{}
+// KubernetesEventLister nutzt client-go, um Events aus einem echten Cluster zu listen.
+type KubernetesEventLister struct {
+	Client Interface // Interface ist ein Platzhalter für client-go Event-Client
+}
 
-// ListEvents is not implemented; wire client-go here in production.
+// Interface ist ein Platzhalter für das client-go Event-API-Interface
+type Interface interface {
+	List(ctx context.Context, namespace string) ([]K8sEvent, error)
+}
+
+// ListEvents ruft Events aus dem Cluster ab (client-go Integration erforderlich)
 func (k KubernetesEventLister) ListEvents(ctx context.Context, namespace string) ([]K8sEvent, error) {
-	return nil, errors.New("kubernetes event lister not wired; provide a concrete implementation")
+	if k.Client == nil {
+		return nil, errors.New("client-go Event-Client nicht konfiguriert")
+	}
+	return k.Client.List(ctx, namespace)
 }

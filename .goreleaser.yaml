@@ -1,0 +1,38 @@
+version: 2
+
+project_name: fluxbrain
+
+env:
+  - CGO_ENABLED=0
+
+builds:
+  - id: fluxbrain
+    main: ./cmd/fluxbrain
+    binary: fluxbrain
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: fluxbrain
+    builds: [fluxbrain]
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ .Version }}-snapshot"
+
+changelog:
+  disable: true

@@ -86,3 +86,78 @@ func (s *MemoryStore) Reset() {
 	defer s.mu.Unlock()
 	s.data = make(map[string]*entry)
 }
+
+// RedisStore ist eine Redis-basierte Implementierung für Backoff-State
+// Achtung: Redis muss erreichbar sein, sonst blockiert die Notification-Logik!
+type RedisStore struct {
+	Client   *redis.Client
+	baseBackoff time.Duration
+	maxBackoff  time.Duration
+	prefix   string // Key-Prefix für Namespacing
+}
+
+// NewRedisStore initialisiert einen RedisStore
+func NewRedisStore(client *redis.Client, baseBackoff, maxBackoff time.Duration, prefix string) *RedisStore {
+	if baseBackoff == 0 {
+		baseBackoff = 30 * time.Second
+	}
+	if maxBackoff == 0 {
+		maxBackoff = 1 * time.Hour
+	}
+	return &RedisStore{
+		Client: client,
+		baseBackoff: baseBackoff,
+		maxBackoff:  maxBackoff,
+		prefix: prefix,
+	}
+}
+
+func (r *RedisStore) key(fp string) string {
+	return r.prefix + ":backoff:" + fp
+}
+
+func (r *RedisStore) InBackoff(fp string) bool {
+	key := r.key(fp)
+	val, err := r.Client.Get(r.Client.Context(), key).Result()
+	if err != nil {
+		return false
+	}
+	nextTry, err := time.Parse(time.RFC3339Nano, val)
+	if err != nil {
+		return false
+	}
+	return time.Now().Before(nextTry)
+}
+
+func (r *RedisStore) RegisterFailure(fp string) {
+	key := r.key(fp)
+	// Hole aktuelle Anzahl Fehler
+	failKey := key + ":failures"
+	failures, _ := r.Client.Incr(r.Client.Context(), failKey).Result()
+	backoff := time.Duration(failures) * r.baseBackoff
+	if backoff > r.maxBackoff {
+		backoff = r.maxBackoff
+	}
+	nextTry := time.Now().Add(backoff)
+	r.Client.Set(r.Client.Context(), key, nextTry.Format(time.RFC3339Nano), backoff)
+}
+
+func (r *RedisStore) RegisterSuccess(fp string) {
+	key := r.key(fp)
+	failKey := key + ":failures"
+	r.Client.Del(r.Client.Context(), key)
+	r.Client.Del(r.Client.Context(), failKey)
+}
+
+func (r *RedisStore) Reset() {
+	// Achtung: Löscht alle Keys mit Prefix
+	iter := r.Client.Scan(r.Client.Context(), 0, r.prefix+":backoff:*", 0).Iterator()
+	for iter.Next(r.Client.Context()) {
+		r.Client.Del(r.Client.Context(), iter.Val())
+	}
+	iter = r.Client.Scan(r.Client.Context(), 0, r.prefix+":backoff:*:failures", 0).Iterator()
+	for iter.Next(r.Client.Context()) {
+		r.Client.Del(r.Client.Context(), iter.Val())
+	}
+}
+}

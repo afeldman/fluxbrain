@@ -7,9 +7,26 @@ go test ./internal/context/...
 go test -cover ./...
 # Fluxbrain
 
-Fluxbrain ist ein FluxCD-Adapter, der rohe Fakten aus Flux-Ressourcen einsammelt und strikt im errorbrain-Format ausgibt. Keine Reasoning-Logik, keine Verdicts, keine Confidence-Scores.
+
+Fluxbrain ist ein Adapter für FluxCD.
+Er sammelt ausschließlich Fakten (Status, Events, Logs, Metadaten) und exportiert sie gemäß der errorbrain-Spec.
+Fluxbrain trifft keine Entscheidungen, erzeugt keine Verdicts und enthält keine AI/LLM-Logik.
+Analyse und Ableitung erfolgen ausschließlich in errorbrain.
+
+**Fakten = Kontext, keine Interpretation!**
+Fluxbrain liefert nur das, was beobachtbar ist – keine Bewertung, keine Ableitung, keine Priorisierung.
+Das hilft errorbrain, weil alle Kontextdaten sauber und nachvollziehbar sind.
+
+**Erlaubte Zusatzfelder (Beispiele):**
+- Flux-Objekt: `kind`, `namespace`, `name`
+- Reconcile-Infos: `attempt`, `lastTransitionTime`
+- Revision: `gitRevision`, `helmChartVersion`
+- Controller-Quelle: `controllerName`
+
+🔒 **Regel:** Alles bleibt beobachtbar, nichts wird bewertet.
 
 ---
+
 
 ## Leitplanken
 
@@ -17,6 +34,7 @@ Fluxbrain ist ein FluxCD-Adapter, der rohe Fakten aus Flux-Ressourcen einsammelt
 - Keine Ursachenbewertung, keine Priorisierung, keine menschlichen Learnings
 - Errorbrain (extern) übernimmt Analyse und LLM-Auswahl
 - Output muss errorbrain-spec-konform sein; Fehler im Export dürfen den Collector nicht blockieren
+- **Jedes Feld muss aus dem beobachtbaren Kontext stammen – keine Interpretation!**
 
 ---
 
